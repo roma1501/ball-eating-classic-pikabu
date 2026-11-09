@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<script src="https://games.pikabu.ru/sdk/sdk.js"></script>
+    <script src="./pikabu-bridge.js"></script>
+<script src="./playgama-yandex-shim.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#5ec8ff" />
+<meta name="format-detection" content="telephone=no" />
+<title>Пожиратель шаров</title>
+<script type="module" crossorigin src="./assets/index.Ci0Ay_OQ.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/style.AgkEc3-o.css">
+</head>
+<body oncontextmenu="return false" onselectstart="return false" ondragstart="return false">
+
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <!-- ============================ LOADER ============================ -->
+  <div id="loader" class="screen">
+    <div class="loader-inner">
+      <div class="logo">
+        <span class="logo-ball"></span>
+        <div class="logo-text">
+          <b class="logo-l1">ПОЖИРАТЕЛЬ</b>
+          <b class="logo-l2">ШАРОВ</b>
+        </div>
+      </div>
+      <div class="progress"><div class="progress-fill" id="loaderFill"></div></div>
+      <div class="loader-tip" id="loaderTip" data-i18n="loading">Загрузка…</div>
+    </div>
+  </div>
+
+  <!-- ============================ START SCREEN ============================ -->
+  <div id="startScreen" class="screen hidden">
+    <div class="start-bg"></div>
+    <div class="start-inner">
+      <div class="logo big">
+        <span class="logo-ball"></span>
+        <div class="logo-text">
+          <b class="logo-l1">ПОЖИРАТЕЛЬ</b>
+          <b class="logo-l2">ШАРОВ</b>
+          <span class="logo-tag" data-i18n="tagline">Ешь. Расти. Правь ареной.</span>
+        </div>
+      </div>
+
+      <div class="start-panel">
+        <!-- No text field on purpose: an on-screen keyboard covers the layout
+             on iOS. The nickname is generated instead. -->
+        <div class="nick-row">
+          <span class="nick-label" data-i18n="nickLabel">Твой ник</span>
+          <div class="nick-show" id="nickShow">—</div>
+        </div>
+
+        <div class="mode-row" id="modeRow">
+          <button class="mode-card" data-mode="classic"><span class="mode-ico ico-eater"></span><b data-i18n="modeClassic">Классика</b></button>
+          <button class="mode-card" data-mode="ring"><span class="mode-ico ico-ring"></span><b data-i18n="modeRing">Кольцо</b></button>
+          <button class="mode-card" data-mode="blitz"><span class="mode-ico ico-blitz"></span><b data-i18n="modeBlitz">Блиц</b></button>
+        </div>
+        <div class="mode-desc" id="modeDesc"></div>
+
+        <button id="btnPlay" class="btn btn-lime btn-huge"><span data-i18n="play">ИГРАТЬ</span></button>
+
+        <div class="start-row">
+          <button id="btnStartUpgrades" class="btn btn-up"><span class="btn-ico ico-upgrade"></span><span data-i18n="upgrades">Прокачка</span></button>
+          <button id="btnStartSkins" class="btn btn-dark"><span class="btn-ico ico-skins"></span><span data-i18n="shop">Магазин</span></button>
+          <button id="btnStartLeaders" class="btn btn-dark"><span class="btn-ico cup-ico"></span><span data-i18n="leaders">Лидеры</span></button>
+          <button id="btnStartSettings" class="btn btn-dark"><span class="btn-ico gear-ico"></span><span data-i18n="settings">Настройки</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ HUD ============================ -->
+  <div id="hud" class="hidden">
+
+    <!-- Storm tint while the player is outside the Ring -->
+    <div class="storm-fx" id="stormFx"><b class="storm-warn" data-i18n="stormWarn">Ты в буре! Вернись в круг!</b></div>
+
+    <!-- Top row: radar | status capsule | round buttons.
+         One flex row, so these three can never overlap at any aspect ratio. -->
+    <div class="hud-top">
+      <div class="radar">
+        <canvas id="minimap" width="220" height="220"></canvas>
+        <div class="radar-ring"></div>
+      </div>
+
+      <div class="topbar">
+        <div class="tb-rank"><i>#</i><span id="statRank">—</span></div>
+        <div class="tb-item tb-score">
+          <span class="stat-ico ico-trophy"></span>
+          <span id="statScore" class="stat-val">0</span>
+        </div>
+        <div class="tb-item tb-coins">
+          <span class="stat-ico ico-coin"></span>
+          <span id="statCoins" class="stat-val">0</span>
+          <button id="btnCoinsPlus" class="plus-btn" aria-label="+">+</button>
+        </div>
+      </div>
+
+      <div class="top-right">
+        <button id="btnMenu" class="round-btn" aria-label="settings"><span class="gear-ico"></span></button>
+        <button id="btnGlobalLb" class="round-btn" aria-label="leaders"><span class="cup-ico"></span></button>
+      </div>
+    </div>
+
+    <!-- Rank ladder along the right edge -->
+    <div class="ladder" id="arenaBoard"></div>
+
+    <!-- Ring / Blitz: timer, phase and players left -->
+    <div class="match-pill hidden" id="matchPill">
+      <span class="mp-label" id="mpLabel"></span>
+      <b class="mp-time" id="mpTime">0:00</b>
+      <span class="mp-alive" id="mpAlive"></span>
+    </div>
+
+    <div class="boost-bar" id="boostBar"></div>
+
+    <!-- Bottom-left dock -->
+    <div class="dock">
+      <button class="dock-btn" id="btnSkins">
+        <span class="dock-ico ico-skins"></span>
+        <span class="dock-lbl" data-i18n="shop">Магазин</span>
+      </button>
+      <button class="dock-btn" id="btnUpgrades">
+        <span class="dock-ico ico-upgrade"></span>
+        <span class="dock-lbl" data-i18n="upgradesShort">Прокачка</span>
+        <span class="badge hidden" id="upBadge">1</span>
+      </button>
+      <button class="dock-btn" id="btnGifts">
+        <span class="dock-ico ico-gift"></span>
+        <span class="dock-lbl" data-i18n="gifts">Дары</span>
+        <span class="badge hidden" id="giftsBadge">1</span>
+      </button>
+      <button class="dock-btn" id="btnSpin">
+        <span class="dock-ico ico-wheel"></span>
+        <span class="dock-lbl" data-i18n="luckySpin">Колесо</span>
+        <span class="badge hidden" id="spinBadge">1</span>
+      </button>
+      <button class="dock-btn" id="btnDaily">
+        <span class="dock-ico ico-calendar"></span>
+        <span class="dock-lbl" data-i18n="dailyBonus">Бонус</span>
+        <span class="badge hidden" id="dailyBadge">1</span>
+      </button>
+      <button class="dock-btn dock-auto" id="btnAuto">
+        <span class="dock-ico ico-auto"></span>
+        <span class="dock-lbl" data-i18n="auto">Авто</span>
+      </button>
+    </div>
+
+    <!-- Bottom-right reward rail -->
+    <div class="boostrail">
+      <button class="rw-card rw-speed" id="btnBoostSpeed">
+        <span class="rw-card-top"><span class="rw-ico"></span><b class="rw-card-tag" data-i18n="adSpeedSub">2X СКОРОСТЬ</b></span>
+        <span class="rw-card-note" data-i18n="adWatch">за просмотр рекламы</span>
+      </button>
+      <button class="rw-card rw-size" id="btnBoostSize">
+        <span class="rw-card-top"><span class="rw-ico"></span><b class="rw-card-tag" data-i18n="adSizeSub">2X РАЗМЕР</b></span>
+        <span class="rw-card-note" data-i18n="adWatch">за просмотр рекламы</span>
+      </button>
+    </div>
+
+    <div class="hint" id="hint"></div>
+
+    <!-- Mobile joystick -->
+    <div class="joystick" id="joystick">
+      <div class="joy-base"><div class="joy-knob" id="joyKnob"></div></div>
+    </div>
+  </div>
+
+  <!-- ============================ DEATH ============================ -->
+  <div id="deathScreen" class="screen dark hidden">
+    <div class="over-card">
+      <div class="over-ribbon hidden" id="deathRibbon" data-i18n="newRecord">НОВЫЙ РЕКОРД</div>
+
+      <div class="over-ring">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+          <circle class="ring-fg" cx="60" cy="60" r="52" id="deathRing"></circle>
+        </svg>
+        <div class="over-ring-in">
+          <b id="deathScore">0</b>
+          <span data-i18n="scoreWord">ОЧКИ</span>
+        </div>
+      </div>
+
+      <div class="over-meta">
+        <div class="over-best"><span class="stat-ico ico-trophy"></span><span data-i18n="bestWord">Рекорд</span> <b id="deathBest">0</b></div>
+        <div class="over-killer" id="deathKiller"></div>
+      </div>
+
+      <div class="over-actions">
+        <button class="rw-card rw-revive" id="btnRevive">
+          <span class="rw-card-top"><span class="rw-ico"></span><b class="rw-card-tag" data-i18n="adReviveSub">ВОЗРОДИТЬСЯ СО СЧЁТОМ</b></span>
+          <span class="rw-card-note" data-i18n="adWatch">за просмотр рекламы</span>
+        </button>
+        <div class="over-row">
+          <button class="btn btn-dark btn-wide" id="btnRestart">
+            <span class="restart-ico"></span><b data-i18n="restart">ПЕРЕЗАПУСК</b>
+          </button>
+          <button class="btn btn-dark" id="btnDeathMenu"><b data-i18n="toMenu">МЕНЮ</b></button>
+        </div>
+      </div>
+
+      <div class="over-timer"><b id="deathCountdown">15,0</b></div>
+    </div>
+  </div>
+
+  <!-- ============================ MATCH RESULT ============================ -->
+  <div id="resultScreen" class="screen dark hidden">
+    <div class="over-card res-card">
+      <div class="res-title" id="resTitle">ПОБЕДА!</div>
+      <div class="res-mode" id="resMode"></div>
+
+      <div class="res-place">
+        <span data-i18n="placeWord">МЕСТО</span>
+        <b id="resPlace">#1</b>
+        <span id="resOf"></span>
+      </div>
+
+      <div class="res-stats">
+        <div class="res-stat"><span class="stat-ico ico-trophy"></span><span data-i18n="scoreWord">ОЧКИ</span><b id="resScore">0</b></div>
+        <div class="res-stat"><span class="stat-ico ico-coin"></span><span data-i18n="rewardWord">НАГРАДА</span><b id="resCoins">+0</b></div>
+      </div>
+      <div class="res-best" id="resBest"></div>
+      <div class="over-killer" id="resNote"></div>
+
+      <div class="over-actions">
+        <button class="btn btn-lime btn-wide" id="btnResAgain"><span class="restart-ico"></span><b data-i18n="playAgain">ЕЩЁ РАЗ</b></button>
+        <button class="btn btn-dark btn-wide" id="btnResMenu"><b data-i18n="toMenu">МЕНЮ</b></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ MODALS ============================ -->
+  <div id="modalLayer" class="modal-layer hidden">
+
+    <!-- SHOP: skins, trails, effects -->
+    <div class="modal" id="modalSkins">
+      <div class="modal-head">
+        <span class="head-ico ico-skins"></span><b data-i18n="shopTitle">МАГАЗИН</b>
+        <button class="close-btn" data-close>✕</button>
+      </div>
+      <div class="shop-tabs" id="shopTabs">
+        <button class="shop-tab on" data-tab="skins" data-i18n="tabSkins">Скины</button>
+        <button class="shop-tab" data-tab="trails" data-i18n="tabTrails">Трейлы</button>
+        <button class="shop-tab" data-tab="effects" data-i18n="tabEffects">Эффекты</button>
+        <span class="shop-coins"><span class="stat-ico ico-coin"></span><b id="skinsCoins">0</b></span>
+      </div>
+      <div class="modal-body grid-skins" id="skinsGrid"></div>
+    </div>
+
+    <!-- UPGRADES -->
+    <div class="modal" id="modalUpgrades">
+      <div class="modal-head">
+        <span class="head-ico ico-upgrade"></span><b data-i18n="upgradesTitle">ПРОКАЧКА</b>
+        <button class="close-btn" data-close>✕</button>
+      </div>
+      <div class="modal-sub">
+        <span class="stat-ico ico-coin"></span><b id="upCoins">0</b>
+      </div>
+      <div class="modal-body up-list" id="upList"></div>
+    </div>
+
+    <!-- GIFTS -->
+    <div class="modal" id="modalGifts">
+      <div class="modal-head">
+        <span class="head-ico ico-gift"></span><b data-i18n="gifts">ДАРЫ</b>
+        <button class="close-btn" data-close>✕</button>
+      </div>
+      <div class="modal-body grid-gifts" id="giftsGrid"></div>
+    </div>
+
+    <!-- LUCKY SPIN -->
+    <div class="modal modal-spin" id="modalSpin">
+      <div class="modal-head">
+        <b data-i18n="luckySpin">ЛАКИ СПИН</b>
+        <button class="close-btn" data-close>✕</button>
+      </div>
+      <div class="modal-body spin-body">
+        <div class="wheel-wrap">
+          <div class="wheel-pointer"></div>
+          <div class="wheel" id="wheel"></div>
+          <div class="wheel-hub"></div>
+        </div>
+        <div class="spin-side">
+          <div class="spin-timer"><span data-i18n="nextSpin">Следующее вращение</span>: <b id="spinTimer">0:00</b></div>
+          <button class="btn btn-blue btn-wide" id="btnSpinGo"><span data-i18n="spinNow">ВРАЩАТЬСЯ</span></button>
+          <button class="btn btn-orange btn-wide" id="btnSpinCoins"><span data-i18n="spinForCoins">КРУТИТЬ ЗА 25</span> <span class="stat-ico ico-coin"></span></button>
+          <button class="btn btn-red btn-wide" data-close><span data-i18n="close">ЗАКРЫТЬ</span></button>
+        </div>
+      </div>
+      <div class="spin-result hidden" id="spinResult"></div>
+    </div>
+
+    <!-- DAILY -->
+    <div class="modal" id="modalDaily">
+      <div class="modal-head">
+        <span class="head-ico ico-calendar"></span><b data-i18n="dailyBonusFull">ЕЖЕДНЕВНЫЙ БОНУС</b>
+        <button class="close-btn" data-close>✕</button>
+      </div>
+      <div class="modal-body daily-body" id="dailyGrid"></div>
+    </div>
+
+    <!-- LEADERBOARD (Yandex) -->
+    <div class="modal" id="modalLeaders">
+      <div class="modal-head">
+        <span class="head-ico ico-trophy"></span><b data-i18n="leadersTitle">ТАБЛИЦА ЛИДЕРОВ</b>
+        <button class="close-btn" data-close>✕</button>
+      </div>
+      <div class="modal-body" id="leadersBody">
+        <div class="lb-loading" data-i18n="loading">Загрузка…</div>
+      </div>
+      <div class="modal-foot" id="leadersFoot"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="modal" id="modalSettings">
+      <div class="modal-head">
+        <b data-i18n="settings">НАСТРОЙКИ</b>
+        <button class="close-btn" data-close>✕</button>
+      </div>
+      <div class="modal-body settings-body">
+        <div class="set-row">
+          <span data-i18n="sound">Звук</span>
+          <button class="toggle" id="setSound"><i></i></button>
+        </div>
+        <div class="set-row">
+          <span data-i18n="music">Музыка</span>
+          <button class="toggle" id="setMusic"><i></i></button>
+        </div>
+        <div class="set-row">
+          <span data-i18n="mouseControl">Управление мышью</span>
+          <button class="toggle" id="setMouse"><i></i></button>
+        </div>
+        <div class="set-row">
+          <span data-i18n="quality">Качество</span>
+          <div class="seg" id="setQuality">
+            <button data-q="low" data-i18n="qLow">Низкое</button>
+            <button data-q="medium" data-i18n="qMed">Среднее</button>
+            <button data-q="high" data-i18n="qHigh">Высокое</button>
+          </div>
+        </div>
+        <div class="set-row set-controls">
+          <span data-i18n="controlsTitle">Управление</span>
+          <p data-i18n="controlsText"></p>
+        </div>
+        <div class="set-exit hidden" id="setExitRow">
+          <button class="btn btn-red btn-wide" id="btnExitMenu"><b data-i18n="exitToMenu">ВЫЙТИ В МЕНЮ</b></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COINS SOURCES -->
+    <div class="modal modal-narrow" id="modalCoins">
+      <div class="modal-head">
+        <span class="head-ico ico-coin"></span><b data-i18n="getCoins">КАК ПОЛУЧИТЬ МОНЕТЫ</b>
+        <button class="close-btn" data-close>✕</button>
+      </div>
+      <div class="modal-body coins-body">
+        <button class="coin-way" data-way="spin"><span class="side-ico ico-wheel"></span><b data-i18n="waySpin">Лаки спин</b></button>
+        <button class="coin-way" data-way="daily"><span class="side-ico ico-calendar"></span><b data-i18n="wayDaily">Ежедневный бонус</b></button>
+        <button class="coin-way" data-way="gifts"><span class="side-ico ico-gift"></span><b data-i18n="wayGifts">Дары</b></button>
+        <div class="coin-note" data-i18n="wayEat">Ешь других игроков — за каждого дают монеты!</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================ PAUSE ============================ -->
+  <div id="pauseOverlay" class="overlay hidden">
+    <div class="pause-card">
+      <div class="pause-ico"></div>
+      <b data-i18n="paused">ПАУЗА</b>
+      <p data-i18n="pausedText">Игра приостановлена</p>
+    </div>
+  </div>
+
+  <!-- ============================ TOASTS ============================ -->
+  <div id="toasts"></div>
+</div>
+
+</body>
+</html>
